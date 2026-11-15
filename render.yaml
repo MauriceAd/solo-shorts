@@ -1,0 +1,29 @@
+# Render blueprint for solo shorts — FREE tier.
+# Deploy with: Render Dashboard -> New -> Blueprint -> connect this repo.
+# Secrets (sync: false) must be filled in the Render dashboard after deploy;
+# nothing secret lives in this repo.
+services:
+  - type: web
+    name: solo-shorts
+    runtime: docker
+    plan: free # $0 — spins down after 15 min idle, ~1 min to wake
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_PUBLIC_BASE_URL
+        sync: false
+      - key: CF_ACCOUNT_ID
+        sync: false
+      - key: CF_API_TOKEN
+        sync: false
+      - key: D1_DATABASE_ID
+        sync: false
