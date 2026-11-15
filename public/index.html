@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>solo shorts</title>
+<style>
+  :root {
+    --gold: #d4af69; --gold-dim: #a8873f; --bg: #0a0a0a; --panel: #141414;
+    --line: #2a2a2a; --text: #f2ede3; --muted: #9a938a; --hover: #1e1e1e;
+    --header-h: 56px; --sidebar-w: 220px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: 1px solid var(--gold); background: transparent; color: var(--gold); border-radius: 999px; padding: 7px 14px; font-size: 13px; }
+  button:hover { background: var(--gold); color: #111; }
+  button.primary { background: var(--gold); color: #111; font-weight: bold; }
+  button.primary:hover { background: #e6c887; }
+  button.danger { border-color: #a33; color: #d66; }
+  button.danger:hover { background: #a33; color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  input, textarea { background: #1c1c1c; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 9px 10px; font-size: 14px; }
+  input:focus { outline: 1px solid var(--gold); }
+
+  /* ---------- Header ---------- */
+  header { position: fixed; top: 0; left: 0; right: 0; height: var(--header-h); z-index: 50;
+    background: rgba(10,10,10,.97); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px; padding: 0 14px; }
+  .burger { border: none; font-size: 20px; padding: 6px 10px; color: var(--text); }
+  .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .brand img { height: 38px; width: 38px; border-radius: 50%; }
+  .brand span { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; letter-spacing: 2px; color: var(--gold); white-space: nowrap; }
+  .search { flex: 1; display: flex; justify-content: center; }
+  .search input { width: min(480px, 100%); border-radius: 999px 0 0 999px; border-right: none; }
+  .search button { border-radius: 0 999px 999px 0; border-left: none; }
+  .owner-btn { flex-shrink: 0; }
+
+  /* ---------- Sidebar ---------- */
+  nav.sidebar { position: fixed; top: var(--header-h); left: 0; bottom: 0; width: var(--sidebar-w);
+    background: var(--bg); border-right: 1px solid var(--line); padding: 12px 8px; z-index: 40; }
+  nav.sidebar a { display: flex; align-items: center; gap: 14px; padding: 11px 14px; border-radius: 10px;
+    font-size: 15px; color: var(--text); }
+  nav.sidebar a:hover { background: var(--hover); }
+  nav.sidebar a.active { background: #221d12; color: var(--gold); font-weight: bold; }
+  nav.sidebar a .ico { font-size: 19px; width: 24px; text-align: center; }
+  body.sidebar-hidden nav.sidebar { display: none; }
+  body.sidebar-hidden main { margin-left: 0; }
+  nav.bottomnav { display: none; }
+
+  main { margin-left: var(--sidebar-w); margin-top: var(--header-h); padding: 18px 20px 60px; min-height: calc(100vh - var(--header-h)); }
+  .view-title { font-family: Georgia, serif; color: var(--gold); font-size: 22px; margin: 4px 0 16px; letter-spacing: 1px; }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 60px 10px; font-size: 15px; line-height: 1.7; }
+
+  /* ---------- Home grid (Shorts shelf) ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+  .vcard { cursor: pointer; }
+  .vcard .thumb { position: relative; aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--line); }
+  .vcard .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vcard .thumb .dur { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.8); color: #fff;
+    font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+  .vcard h3 { font-size: 14px; margin: 8px 2px 3px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .vcard .meta { font-size: 12px; color: var(--muted); margin: 0 2px; }
+
+  /* ---------- Shorts feed ---------- */
+  .shorts-feed { height: calc(100vh - var(--header-h) - 36px); overflow-y: auto; scroll-snap-type: y mandatory; border-radius: 14px; }
+  .short-item { height: 100%; scroll-snap-align: start; display: flex; justify-content: center; align-items: center; gap: 12px; position: relative; }
+  .short-item .stage { position: relative; height: 100%; aspect-ratio: 9 / 16; max-width: 100%; background: #000; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+  .short-item video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+  .short-item .overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 14px 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+  .short-item .overlay h3 { margin: 0 0 4px; font-size: 15px; }
+  .short-item .overlay .meta { font-size: 12px; color: #cfc8bb; }
+  .rail { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .rail button { width: 52px; height: 52px; border-radius: 50%; padding: 0; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  .rail button small { font-size: 10px; margin-top: 1px; }
+  .rail button.liked { background: var(--gold); color: #111; }
+  .rail button.liked small { color: #111; }
+
+  /* ---------- Watch view ---------- */
+  .watch { max-width: 760px; margin: 0 auto; }
+  .watch .player { background: #000; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .watch video { display: block; width: 100%; max-height: 78vh; aspect-ratio: 9 / 16; object-fit: contain; background: #000; margin: 0 auto; }
+  .watch h1 { font-size: 20px; margin: 14px 0 4px; font-family: Georgia, serif; }
+  .watch .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .watch .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .like-btn.liked { background: var(--gold); color: #111; }
+  .back { display: inline-block; margin-bottom: 12px; color: var(--gold); font-size: 14px; cursor: pointer; background: none; border: none; padding: 0; }
+
+  /* ---------- Comments ---------- */
+  .comments { border-top: 1px solid var(--line); padding-top: 12px; }
+  .comments h3 { font-size: 16px; margin: 0 0 10px; }
+  .comment { padding: 8px 0; border-bottom: 1px solid #1e1e1e; font-size: 14px; }
+  .comment b { color: var(--gold); }
+  .comment .cdate { color: var(--muted); font-size: 11px; margin-left: 6px; }
+  .comment .del { float: right; background: none; border: none; color: #c66; padding: 0 4px; font-size: 14px; }
+  .comment-form { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .comment-form input { flex: 1 1 120px; min-width: 0; }
+
+  /* ---------- Library / owner panels ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 22px; }
+  .panel h2 { margin: 0 0 10px; color: var(--gold); font-size: 18px; font-family: Georgia, serif; letter-spacing: 1px; }
+  .panel label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  .panel input[type="text"], .panel input[type="password"], .panel input[type="file"] { width: 100%; }
+  .warn { color: #e8b64c; font-size: 12px; line-height: 1.5; }
+  .status { font-size: 13px; margin-top: 8px; min-height: 16px; }
+  .status.err { color: #e07070; }
+  .status.ok { color: #8fce8f; }
+  .manage-row { display: flex; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid #1e1e1e; flex-wrap: wrap; }
+  .manage-row input { flex: 1 1 160px; min-width: 0; }
+  .hidden { display: none !important; }
+
+  /* ---------- Owner modal ---------- */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: var(--panel); border: 1px solid var(--gold-dim); border-radius: 14px; padding: 22px; width: min(420px, 100%); }
+  .modal h2 { margin: 0 0 8px; color: var(--gold); font-family: Georgia, serif; }
+  .modal input { width: 100%; margin: 10px 0; }
+
+  @media (max-width: 768px) {
+    nav.sidebar { display: none; }
+    main { margin-left: 0; padding-bottom: 90px; }
+    .brand span { display: none; }
+    nav.bottomnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: rgba(10,10,10,.97);
+      border-top: 1px solid var(--line); justify-content: space-around; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
+    nav.bottomnav a { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--text); padding: 4px 10px; }
+    nav.bottomnav a.active { color: var(--gold); }
+    nav.bottomnav a .ico { font-size: 20px; }
+    .shorts-feed { height: calc(100vh - var(--header-h) - 70px); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="burger" id="burger" type="button" aria-label="Menu">☰</button>
+  <a class="brand" href="#/"><img src="/emblem.png" alt="solo shorts logo"><span>solo shorts</span></a>
+  <div class="search">
+    <input id="searchInput" type="text" placeholder="Search" autocomplete="off">
+    <button id="searchBtn" type="button">🔍</button>
+  </div>
+  <button class="owner-btn" id="ownerBtn" type="button">Owner login</button>
+</header>
+
+<nav class="sidebar" id="sidebar">
+  <a href="#/" data-nav="home"><span class="ico">🏠</span> Home</a>
+  <a href="#/shorts" data-nav="shorts"><span class="ico">▶</span> Shorts</a>
+  <a href="#/library" data-nav="library"><span class="ico">📚</span> Library</a>
+</nav>
+
+<nav class="bottomnav" id="bottomnav">
+  <a href="#/" data-nav="home"><span class="ico">🏠</span>Home</a>
+  <a href="#/shorts" data-nav="shorts"><span class="ico">▶</span>Shorts</a>
+  <a href="#/library" data-nav="library"><span class="ico">📚</span>Library</a>
+</nav>
+
+<main id="main"></main>
+
+<div class="modal-bg hidden" id="ownerModal">
+  <div class="modal">
+    <h2 id="ownerModalTitle">Owner login</h2>
+    <p class="warn" id="ownerModalWarn"></p>
+    <input id="ownerPassInput" type="password" placeholder="Passcode" maxlength="64">
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <button class="primary" id="ownerGoBtn" type="button">Log in</button>
+      <button id="ownerCancelBtn" type="button">Cancel</button>
+    </div>
+    <div class="status" id="ownerStatus"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- state ---------------- */
+  var deviceId = localStorage.getItem('ss_device');
+  if (!deviceId) {
+    deviceId = (crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('ss_device', deviceId);
+  }
+  var ownerToken = null; // bearer fallback; the httpOnly cookie is the main transport
+  var ownerLoggedIn = false;
+  var passcodeSet = false;
+  var videos = [];
+  var searchQuery = '';
+  var viewedOnce = {};
+  var shortsObserver = null;
+
+  var mainEl = document.getElementById('main');
+
+  /* ---------------- helpers ---------------- */
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function fmtDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function fmtDur(sec) {
+    if (sec == null) return '';
+    sec = Math.round(sec);
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    if (ownerToken) opts.headers['Authorization'] = 'Bearer ' + ownerToken;
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.error || ('request failed (' + r.status + ')'));
+        return j;
+      });
+    });
+  }
+  function findVideo(id) {
+    for (var i = 0; i < videos.length; i++) if (videos[i].id === id) return videos[i];
+    return null;
+  }
+  function countView(v) {
+    if (!v || viewedOnce[v.id]) return;
+    viewedOnce[v.id] = true;
+    api('/api/videos/' + v.id + '/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: deviceId }),
+    }).then(function (j) { v.views = j.views; }).catch(function () {});
+  }
+  function likeToggle(v, btn) {
+    var want = !v.liked;
+    api('/api/videos/' + v.id + '/like', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: deviceId, liked: want }),
+    }).then(function (j) {
+      v.liked = j.liked;
+      v.likes = j.likes;
+      refreshLikeButtons(v);
+    }).catch(function () {});
+  }
+  function refreshLikeButtons(v) {
+    var btns = document.querySelectorAll('[data-like-for="' + v.id + '"]');
+    btns.forEach(function (b) {
+      b.classList.toggle('liked', !!v.liked);
+      var label = b.querySelector('.like-count');
+      if (label) label.textContent = v.likes;
+      else if (b.classList.contains('like-btn')) b.textContent = '♥ ' + v.likes;
+    });
+  }
+
+  /* ---------------- owner ---------------- */
+  var ownerBtn = document.getElementById('ownerBtn');
+  var ownerModal = document.getElementById('ownerModal');
+
+  function openOwnerModal() {
+    document.getElementById('ownerModalTitle').textContent = passcodeSet ? 'Owner login' : 'Set your owner passcode';
+    document.getElementById('ownerModalWarn').textContent = passcodeSet
+      ? 'Enter your owner passcode to upload and manage videos.'
+      : 'First time here: choose a passcode. There is NO reset — write it down somewhere safe. Only you will ever upload videos.';
+    document.getElementById('ownerGoBtn').textContent = passcodeSet ? 'Log in' : 'Set passcode';
+    document.getElementById('ownerPassInput').value = '';
+    document.getElementById('ownerStatus').textContent = '';
+    ownerModal.classList.remove('hidden');
+    document.getElementById('ownerPassInput').focus();
+  }
+  function closeOwnerModal() { ownerModal.classList.add('hidden'); }
+
+  ownerBtn.addEventListener('click', function () {
+    if (ownerLoggedIn) {
+      api('/api/owner/logout', { method: 'POST' }).finally(function () {
+        ownerToken = null;
+        ownerLoggedIn = false;
+        ownerBtn.textContent = 'Owner login';
+        route();
+      });
+    } else {
+      openOwnerModal();
+    }
+  });
+  document.getElementById('ownerCancelBtn').addEventListener('click', closeOwnerModal);
+  ownerModal.addEventListener('click', function (e) { if (e.target === ownerModal) closeOwnerModal(); });
+  document.getElementById('ownerGoBtn').addEventListener('click', function () {
+    var pc = document.getElementById('ownerPassInput').value;
+    var st = document.getElementById('ownerStatus');
+    if (pc.length < 4) { st.textContent = 'Passcode must be at least 4 characters.'; st.className = 'status err'; return; }
+    st.textContent = 'Please wait…';
+    st.className = 'status';
+    api(passcodeSet ? '/api/owner/login' : '/api/owner/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: pc }),
+    }).then(function (j) {
+      ownerToken = j.token;
+      ownerLoggedIn = true;
+      ownerBtn.textContent = 'Owner ✓';
+      closeOwnerModal();
+      route();
+    }).catch(function (e) {
+      st.textContent = e.message;
+      st.className = 'status err';
+    });
+  });
+  document.getElementById('ownerPassInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') document.getElementById('ownerGoBtn').click();
+  });
+
+  document.getElementById('burger').addEventListener('click', function () {
+    document.body.classList.toggle('sidebar-hidden');
+  });
+
+  /* ---------------- search ---------------- */
+  var searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', function () {
+    searchQuery = searchInput.value.trim().toLowerCase();
+    if (location.hash !== '#/' && location.hash !== '') location.hash = '#/';
+    else renderHome();
+  });
+  document.getElementById('searchBtn').addEventListener('click', function () {
+    searchQuery = searchInput.value.trim().toLowerCase();
+    location.hash = '#/';
+    renderHome();
+  });
+
+  /* ---------------- shared bits ---------------- */
+  function likeButton(v, cls) {
+    var b = el('button', (cls || 'like-btn') + (v.liked ? ' liked' : ''));
+    b.type = 'button';
+    b.setAttribute('data-like-for', v.id);
+    if (cls === 'rail-btn') {
+      b.innerHTML = '♥<small class="like-count">' + v.likes + '</small>';
+    } else {
+      b.textContent = '♥ ' + v.likes;
+    }
+    b.addEventListener('click', function (e) { e.stopPropagation(); likeToggle(v, b); });
+    return b;
+  }
+  function downloadButton(v, cls) {
+    var a = document.createElement('a');
+    a.href = '/api/videos/' + v.id + '/download';
+    a.style.textDecoration = 'none';
+    var b = el('button', cls || '');
+    b.type = 'button';
+    if (cls === 'rail-btn') b.innerHTML = '⬇<small>Save</small>';
+    else b.textContent = '⬇ Download';
+    a.appendChild(b);
+    return a;
+  }
+  function commentButton(v, cls) {
+    var b = el('button', cls || '');
+    b.type = 'button';
+    if (cls === 'rail-btn') b.innerHTML = '💬<small class="c-count">' + v.comments + '</small>';
+    else b.textContent = '💬 ' + v.comments;
+    b.addEventListener('click', function (e) { e.stopPropagation(); location.hash = '#/watch/' + v.id; });
+    return b;
+  }
+
+  function commentsSection(v) {
+    var box = el('div', 'comments');
+    box.appendChild(el('h3', null, v.comments + ' Comments'));
+    var list = el('div');
+    var form = el('div', 'comment-form');
+    var nameIn = el('input');
+    nameIn.placeholder = 'Your name';
+    nameIn.maxLength = 40;
+    var textIn = el('input');
+    textIn.placeholder = 'Write a comment…';
+    textIn.maxLength = 500;
+    var post = el('button', 'primary', 'Post');
+    post.type = 'button';
+    post.addEventListener('click', function () {
+      var name = nameIn.value.trim();
+      var text = textIn.value.trim();
+      if (!name || !text) return;
+      api('/api/videos/' + v.id + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, text: text }),
+      }).then(function (c) {
+        nameIn.value = '';
+        textIn.value = '';
+        v.comments += 1;
+        list.appendChild(renderComment(v, c));
+        box.querySelector('h3').textContent = v.comments + ' Comments';
+      }).catch(function () {});
+    });
+    form.append(nameIn, textIn, post);
+    box.append(list, form);
+    api('/api/videos/' + v.id + '/comments').then(function (cs) {
+      list.innerHTML = '';
+      cs.forEach(function (c) { list.appendChild(renderComment(v, c)); });
+    }).catch(function () {});
+    return box;
+  }
+  function renderComment(v, c) {
+    var d = el('div', 'comment');
+    d.append(el('b', null, c.name), document.createTextNode(' ' + c.text), el('span', 'cdate', fmtDate(c.created_at)));
+    if (ownerLoggedIn) {
+      var del = el('button', 'del', '✕');
+      del.type = 'button';
+      del.title = 'Delete comment';
+      del.addEventListener('click', function () {
+        api('/api/comments/' + c.id, { method: 'DELETE' }).then(function () { d.remove(); }).catch(function () {});
+      });
+      d.appendChild(del);
+    }
+    return d;
+  }
+
+  /* ---------------- views ---------------- */
+  function setActiveNav(name) {
+    document.querySelectorAll('[data-nav]').forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('data-nav') === name);
+    });
+  }
+
+  function filteredVideos() {
+    if (!searchQuery) return videos;
+    return videos.filter(function (v) { return v.title.toLowerCase().indexOf(searchQuery) !== -1; });
+  }
+
+  function renderHome() {
+    setActiveNav('home');
+    mainEl.innerHTML = '';
+    var list = filteredVideos();
+    mainEl.appendChild(el('div', 'view-title', searchQuery ? 'Search results' : 'Shorts'));
+    if (!list.length) {
+      mainEl.appendChild(el('div', 'empty', videos.length
+        ? 'No videos match "' + searchQuery + '".'
+        : 'No videos yet.\nThe owner hasn\'t uploaded anything — check back soon.'));
+      return;
+    }
+    var grid = el('div', 'grid');
+    list.forEach(function (v) {
+      var card = el('div', 'vcard');
+      var thumb = el('div', 'thumb');
+      var vid = document.createElement('video');
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.preload = 'metadata';
+      vid.src = v.stream_url;
+      thumb.appendChild(vid);
+      if (v.duration) thumb.appendChild(el('span', 'dur', fmtDur(v.duration)));
+      card.appendChild(thumb);
+      card.appendChild(el('h3', null, v.title));
+      card.appendChild(el('div', 'meta', v.views + ' views • ' + fmtDate(v.created_at)));
+      card.addEventListener('click', function () { location.hash = '#/watch/' + v.id; });
+      thumb.addEventListener('mouseenter', function () { vid.play().catch(function () {}); });
+      thumb.addEventListener('mouseleave', function () { vid.pause(); vid.currentTime = 0; });
+      grid.appendChild(card);
+    });
+    mainEl.appendChild(grid);
+  }
+
+  function renderShorts() {
+    setActiveNav('shorts');
+    mainEl.innerHTML = '';
+    if (!videos.length) {
+      mainEl.appendChild(el('div', 'empty', 'No videos yet.\nThe owner hasn\'t uploaded anything — check back soon.'));
+      return;
+    }
+    var feed = el('div', 'shorts-feed');
+    videos.forEach(function (v) {
+      var item = el('div', 'short-item');
+      var stage = el('div', 'stage');
+      var vid = document.createElement('video');
+      vid.controls = true;
+      vid.playsInline = true;
+      vid.preload = 'metadata';
+      vid.muted = true;
+      vid.loop = true;
+      vid.src = v.stream_url;
+      vid.addEventListener('play', function () { countView(v); });
+      stage.appendChild(vid);
+      var ov = el('div', 'overlay');
+      ov.appendChild(el('h3', null, v.title));
+      ov.appendChild(el('div', 'meta', v.views + ' views • ' + fmtDate(v.created_at)));
+      stage.appendChild(ov);
+      var rail = el('div', 'rail');
+      rail.appendChild(likeButton(v, 'rail-btn'));
+      rail.appendChild(commentButton(v, 'rail-btn'));
+      rail.appendChild(downloadButton(v, 'rail-btn'));
+      item.append(stage, rail);
+      feed.appendChild(item);
+    });
+    mainEl.appendChild(feed);
+    if (shortsObserver) shortsObserver.disconnect();
+    shortsObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        var vid = en.target.querySelector('video');
+        if (!vid) return;
+        if (en.intersectionRatio >= 0.6) vid.play().catch(function () {});
+        else vid.pause();
+      });
+    }, { root: feed, threshold: [0.6] });
+    feed.querySelectorAll('.short-item').forEach(function (it) { shortsObserver.observe(it); });
+  }
+
+  function renderWatch(id) {
+    setActiveNav('');
+    mainEl.innerHTML = '';
+    var v = findVideo(id);
+    if (!v) {
+      mainEl.appendChild(el('div', 'empty', 'Video not found.'));
+      return;
+    }
+    var wrap = el('div', 'watch');
+    var back = el('button', 'back', '← Back');
+    back.type = 'button';
+    back.addEventListener('click', function () { history.back(); });
+    var player = el('div', 'player');
+    var vid = document.createElement('video');
+    vid.controls = true;
+    vid.playsInline = true;
+    vid.autoplay = true;
+    vid.muted = true;
+    vid.src = v.stream_url;
+    vid.addEventListener('play', function () { countView(v); });
+    player.appendChild(vid);
+    var h1 = el('h1', null, v.title);
+    var meta = el('div', 'meta', v.views + ' views • ' + fmtDate(v.created_at));
+    var actions = el('div', 'actions');
+    actions.append(likeButton(v, 'like-btn'), commentButton(v, ''), downloadButton(v, ''));
+    if (ownerLoggedIn) {
+      var edit = el('button', null, '✏️ Edit title');
+      edit.type = 'button';
+      edit.addEventListener('click', function () {
+        var t = prompt('New title:', v.title);
+        if (!t || !t.trim()) return;
+        api('/api/videos/' + v.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: t.trim() }),
+        }).then(function (nv) { v.title = nv.title; h1.textContent = nv.title; }).catch(function () {});
+      });
+      var del = el('button', 'danger', '🗑 Delete video');
+      del.type = 'button';
+      del.addEventListener('click', function () {
+        if (!confirm('Delete "' + v.title + '" permanently?')) return;
+        api('/api/videos/' + v.id, { method: 'DELETE' }).then(function () {
+          videos = videos.filter(function (x) { return x.id !== v.id; });
+          location.hash = '#/';
+        }).catch(function () {});
+      });
+      actions.append(edit, del);
+    }
+    wrap.append(back, player, h1, meta, actions, commentsSection(v));
+    mainEl.appendChild(wrap);
+  }
+
+  function renderLibrary() {
+    setActiveNav('library');
+    mainEl.innerHTML = '';
+    mainEl.appendChild(el('div', 'view-title', 'Library'));
+    var liked = videos.filter(function (v) { return v.liked; });
+    var sec = el('div', 'panel');
+    sec.appendChild(el('h2', null, 'Liked videos'));
+    if (!liked.length) {
+      sec.appendChild(el('div', 'muted', 'Videos you liked will show up here.'));
+    } else {
+      var grid = el('div', 'grid');
+      liked.forEach(function (v) {
+        var card = el('div', 'vcard');
+        var thumb = el('div', 'thumb');
+        var vid = document.createElement('video');
+        vid.muted = true;
+        vid.playsInline = true;
+        vid.preload = 'metadata';
+        vid.src = v.stream_url;
+        thumb.appendChild(vid);
+        card.appendChild(thumb);
+        card.appendChild(el('h3', null, v.title));
+        card.appendChild(el('div', 'meta', v.views + ' views • ' + fmtDate(v.created_at)));
+        card.addEventListener('click', function () { location.hash = '#/watch/' + v.id; });
+        grid.appendChild(card);
+      });
+      sec.appendChild(grid);
+    }
+    mainEl.appendChild(sec);
+
+    if (ownerLoggedIn) {
+      var up = el('div', 'panel');
+      up.appendChild(el('h2', null, '+ Upload a video'));
+      var lab1 = el('label', null, 'Video file (max 200 MB — .mp4, .mov, .webm, .mkv, .m4v)');
+      var fileIn = el('input');
+      fileIn.type = 'file';
+      fileIn.accept = 'video/*';
+      var lab2 = el('label', null, 'Title');
+      var titleIn = el('input');
+      titleIn.type = 'text';
+      titleIn.maxLength = 120;
+      titleIn.placeholder = 'Video title';
+      var pub = el('button', 'primary', 'Publish');
+      pub.type = 'button';
+      var st = el('div', 'status');
+      pub.addEventListener('click', function () {
+        var file = fileIn.files[0];
+        var title = titleIn.value.trim();
+        if (!file) { st.textContent = 'Choose a video file first.'; st.className = 'status err'; return; }
+        if (!title) { st.textContent = 'Give the video a title.'; st.className = 'status err'; return; }
+        var fd = new FormData();
+        fd.append('video', file);
+        fd.append('title', title);
+        st.textContent = 'Uploading…';
+        st.className = 'status';
+        fetch('/api/videos', {
+          method: 'POST',
+          headers: ownerToken ? { 'Authorization': 'Bearer ' + ownerToken } : {},
+          body: fd,
+        }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'upload failed'); return j; }); })
+          .then(function (nv) {
+            st.textContent = 'Published! Your video is live now.';
+            st.className = 'status ok';
+            fileIn.value = '';
+            titleIn.value = '';
+            videos.unshift(nv);
+            renderLibrary();
+          })
+          .catch(function (e) { st.textContent = e.message; st.className = 'status err'; });
+      });
+      up.append(lab1, fileIn, lab2, titleIn, document.createElement('br'), document.createElement('br'), pub, st);
+      mainEl.appendChild(up);
+
+      var mg = el('div', 'panel');
+      mg.appendChild(el('h2', null, 'Manage videos'));
+      var list = el('div');
+      mg.appendChild(list);
+      mainEl.appendChild(mg);
+      api('/api/owner/videos').then(function (vs) {
+        if (!vs.length) { list.textContent = 'No videos yet.'; return; }
+        vs.forEach(function (v) {
+          var row = el('div', 'manage-row');
+          var input = el('input');
+          input.type = 'text';
+          input.value = v.title;
+          input.maxLength = 120;
+          var save = el('button', null, 'Save title');
+          save.type = 'button';
+          save.addEventListener('click', function () {
+            var t = input.value.trim();
+            if (!t) return;
+            api('/api/videos/' + v.id, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: t }),
+            }).then(function (nv) {
+              var cur = findVideo(v.id);
+              if (cur) cur.title = nv.title;
+            }).catch(function () {});
+          });
+          var del = el('button', 'danger', 'Delete video');
+          del.type = 'button';
+          del.addEventListener('click', function () {
+            if (!confirm('Delete "' + v.title + '" permanently?')) return;
+            api('/api/videos/' + v.id, { method: 'DELETE' }).then(function () {
+              videos = videos.filter(function (x) { return x.id !== v.id; });
+              renderLibrary();
+            }).catch(function () {});
+          });
+          var info = el('span', 'muted', v.views + ' views • ♥ ' + v.likes + ' • 💬 ' + v.comments);
+          row.append(input, save, del, info);
+          list.appendChild(row);
+        });
+      }).catch(function (e) { list.textContent = 'Could not load: ' + e.message; });
+    } else {
+      var loginPanel = el('div', 'panel');
+      loginPanel.appendChild(el('h2', null, 'Owner'));
+      loginPanel.appendChild(el('div', 'muted', 'Only the owner uploads videos here.'));
+      var lb = el('button', null, 'Owner login');
+      lb.type = 'button';
+      lb.addEventListener('click', openOwnerModal);
+      loginPanel.appendChild(document.createElement('br'));
+      loginPanel.appendChild(document.createElement('br'));
+      loginPanel.appendChild(lb);
+      mainEl.appendChild(loginPanel);
+    }
+  }
+
+  /* ---------------- router ---------------- */
+  function route() {
+    var h = location.hash || '#/';
+    if (h === '#/' || h === '') renderHome();
+    else if (h === '#/shorts') renderShorts();
+    else if (h.indexOf('#/watch/') === 0) renderWatch(parseInt(h.slice(8), 10));
+    else if (h === '#/library') renderLibrary();
+    else renderHome();
+  }
+  window.addEventListener('hashchange', route);
+
+  /* ---------------- init ---------------- */
+  function loadVideos() {
+    return api('/api/videos?device=' + encodeURIComponent(deviceId)).then(function (vs) {
+      videos = vs;
+    }).catch(function () { videos = []; });
+  }
+  api('/api/owner/status').then(function (s) {
+    passcodeSet = s.passcodeSet;
+    ownerLoggedIn = !!s.loggedIn;
+    if (ownerLoggedIn) ownerBtn.textContent = 'Owner ✓';
+  }).catch(function () {}).finally(function () {
+    loadVideos().then(route);
+  });
+})();
+</script>
+</body>
+</html>
