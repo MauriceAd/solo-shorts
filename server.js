@@ -25,6 +25,8 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const express = require('express');
 const multer = require('multer');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const { createStore } = require('./lib/store');
 
@@ -48,6 +50,23 @@ const MAX_COMMENT_LEN = 500;
 fs.mkdirSync(DOWNLOAD_CACHE_DIR, { recursive: true });
 
 const store = createStore();
+
+// S3 client used ONLY to sign direct-to-R2 upload URLs. The browser uploads
+// straight to R2 (presigned PUT), bypassing this small container/proxy for
+// the large transfer. In memory-store mode (no R2 creds) dummy values keep
+// signing working for local tests; the resulting URL simply cannot upload
+// to real R2. Content-Type is deliberately NOT part of the signed request,
+// so the browser may send the file's own type without breaking the signature.
+const presignS3 = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT || 'https://example.r2.cloudflarestorage.com',
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || 'test',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || 'test',
+  },
+});
+const PRESIGN_BUCKET = process.env.R2_BUCKET || 'solo-shorts-videos';
+const PRESIGN_TTL_S = 900; // 15 minutes
 
 // Wrap async route handlers so a rejected promise reaches the error
 // middleware instead of crashing the process (Express 4 does not do this).
@@ -396,6 +415,53 @@ app.post('/api/owner/logout', (req, res) => {
 
 app.get('/api/owner/videos', requireOwner, asyncHandler(async (req, res) => {
   res.json(await store.listVideos(null));
+}));
+
+// --- Direct-to-R2 upload (presigned PUT) -----------------------------------
+// The browser uploads the file straight to R2 and then confirms, so the
+// large transfer never passes through this container/proxy.
+// POST /api/videos/presign -> { uploadUrl, r2Key }
+// POST /api/videos/confirm -> creates the video record, 201 with the video
+app.post('/api/videos/presign', requireOwner, asyncHandler(async (req, res) => {
+  const filename = typeof req.body.filename === 'string' ? req.body.filename : '';
+  const contentType = typeof req.body.contentType === 'string' ? req.body.contentType : '';
+  const ext = path.extname(filename).toLowerCase();
+  if (!VIDEO_EXTS.has(ext) || !contentType.startsWith('video/')) {
+    return res.status(400).json({ error: 'only video files are allowed (.mp4, .mov, .webm, .mkv, .m4v)' });
+  }
+  const r2Key = `videos/${crypto.randomUUID()}${ext}`;
+  try {
+    const uploadUrl = await getSignedUrl(presignS3, new PutObjectCommand({
+      Bucket: PRESIGN_BUCKET,
+      Key: r2Key,
+    }), { expiresIn: PRESIGN_TTL_S });
+    res.json({ uploadUrl, r2Key });
+  } catch (e) {
+    console.error('presign failed:', e.message);
+    res.status(500).json({ error: 'could not prepare upload, please try again' });
+  }
+}));
+
+app.post('/api/videos/confirm', requireOwner, asyncHandler(async (req, res) => {
+  const title = typeof req.body.title === 'string' ? req.body.title.trim().slice(0, MAX_TITLE_LEN) : '';
+  const r2Key = typeof req.body.r2Key === 'string' ? req.body.r2Key : '';
+  if (!title) return res.status(400).json({ error: 'a title is required' });
+  if (!/^videos\/[0-9a-f-]+\.(mp4|mov|webm|mkv|m4v)$/.test(r2Key)) {
+    return res.status(400).json({ error: 'invalid video reference' });
+  }
+  const width = typeof req.body.width === 'number' && Number.isFinite(req.body.width)
+    ? Math.round(req.body.width) : null;
+  const height = typeof req.body.height === 'number' && Number.isFinite(req.body.height)
+    ? Math.round(req.body.height) : null;
+  const duration = typeof req.body.duration === 'number' && Number.isFinite(req.body.duration)
+    ? req.body.duration : null;
+  try {
+    const video = await store.createVideo({ title, r2Key, width, height, duration });
+    res.status(201).json(video);
+  } catch (e) {
+    console.error('confirm failed:', e.message);
+    res.status(500).json({ error: 'could not save video details' });
+  }
 }));
 
 const upload = multer({
